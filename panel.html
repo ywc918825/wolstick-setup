@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>远程开机棒 · 控制面板</title>
+<style>
+  :root{--bg:#0b1220;--card:#141c2e;--line:#243049;--fg:#e8eefc;--dim:#8fa0c0;
+        --ok:#2ecc71;--warn:#f5a623;--err:#ff5a5a;--accent:#4c8dff;--accent2:#7b5cff}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    padding:0 0 48px}
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px}
+  header{text-align:center;padding:14px 0 6px}
+  .logo{width:54px;height:54px;margin:0 auto 10px;border-radius:16px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:26px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+  .card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  label{display:block;font-size:13px;color:var(--dim);margin:12px 0 5px}
+  label:first-of-type{margin-top:0}
+  input{width:100%;padding:12px 13px;border-radius:11px;border:1px solid var(--line);
+    background:#0e1524;color:var(--fg);font-size:15px;font-family:inherit}
+  input:focus{outline:none;border-color:var(--accent)}
+  .hint{font-size:12px;color:var(--dim);margin-top:5px}
+  button{width:100%;padding:15px;border:0;border-radius:12px;font-size:16px;font-weight:600;
+    font-family:inherit;cursor:pointer;background:var(--accent);color:#fff;margin-top:6px}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500}
+  button.ok{background:var(--ok)}
+  .status{font-size:13px;padding:10px 12px;border-radius:10px;margin-top:12px;
+    background:#0e1524;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:20px}
+  .status.ok{background:rgba(46,204,113,.10);border-color:rgba(46,204,113,.35);color:#9ff0c4}
+  .status.err{background:rgba(255,90,90,.10);border-color:rgba(255,90,90,.35);color:#ffc2c2}
+  .status.warn{background:rgba(245,166,35,.10);border-color:rgba(245,166,35,.35);color:#ffe0a8}
+  .pill{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;
+    background:#0e1524;border:1px solid var(--line);color:var(--dim)}
+  .pill.on{background:rgba(46,204,113,.14);border-color:rgba(46,204,113,.4);color:#9ff0c4}
+  .pill.off{background:rgba(255,90,90,.10);border-color:rgba(255,90,90,.3);color:#ffc2c2}
+  .big{padding:22px;font-size:19px;border-radius:16px}
+  .fold{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+  .fold summary{cursor:pointer;font-size:13px;color:var(--dim);list-style:none;user-select:none}
+  .fold summary::-webkit-details-marker{display:none}
+  .fold summary::before{content:"▸ ";color:var(--accent)}
+  .fold[open] summary::before{content:"▾ "}
+  .warnbox{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);
+    border-radius:12px;padding:12px 14px;font-size:12.5px;color:#ffe0a8;margin:12px 0}
+  .warnbox b{color:#ffcf7a}
+  .foot{text-align:center;color:#55658a;font-size:12px;margin-top:22px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">⚡</div>
+  <h1>远程开机棒</h1>
+  <div class="sub">主题 <b id="tTopic">-</b></div>
+</header>
+
+<!-- 状态 -->
+<div class="card">
+  <h2>设备状态 <span class="pill" id="tState">读取中…</span></h2>
+  <div class="status" id="stState">正在连接巴法云…</div>
+  <button id="btnRefresh" class="ghost">🔄 刷新</button>
+</div>
+
+<!-- 开机 -->
+<div class="card">
+  <h2>远程开机</h2>
+  <button id="btnOn" class="big ok">⚡ 开机</button>
+  <div class="status" id="stOn"></div>
+  <div class="hint" style="margin-top:10px">
+    目标电脑是<b>关机</b>状态时按这个。开机后大约 25~90 秒。
+    如果板子显示「目标本来就在线」,说明电脑本来就开着,这次不算唤醒。
+  </div>
+</div>
+
+<!-- 配置目标电脑 -->
+<div class="card">
+  <h2>配置要唤醒的电脑</h2>
+  <label>电脑有线网卡的 MAC</label>
+  <input id="fMac" type="text" placeholder="A4:BB:6D:11:22:33" autocapitalize="characters" autocorrect="off">
+  <label>电脑的 IPv4</label>
+  <input id="fIp" type="text" placeholder="192.168.31.102" autocapitalize="none" autocorrect="off">
+  <div class="hint">
+    在<b>路由器后台</b>的「已连接设备 / DHCP 客户端列表」里能看到,不用打开那台电脑。
+    建议顺手给它做一次 <b>IP 与 MAC 绑定</b>,以后 IP 变了也不用重配。
+  </div>
+  <button id="btnCfg">⬇️ 下发配置到开机棒</button>
+  <div class="status" id="stCfg"></div>
+</div>
+
+<!-- 其它 -->
+<div class="card">
+  <h2>其它设置</h2>
+  <details class="fold">
+    <summary>展开:Wi-Fi / 云端账号 / 手工指令</summary>
+    <label>Wi-Fi 名称(2.4G)</label>
+    <input id="fSsid" type="text" placeholder="例如 wang_home_plus" autocapitalize="none">
+    <label>Wi-Fi 密码</label>
+    <input id="fPass" type="password" placeholder="至少 8 位" autocapitalize="none">
+    <label>巴法云私钥(32 位十六进制)</label>
+    <input id="fUid" type="text" placeholder="32 位十六进制" autocapitalize="none">
+    <label>主题名</label>
+    <input id="fTopicIn" type="text" placeholder="例如 wolnddz99006" autocapitalize="none">
+    <button id="btnCfg2" class="ghost">⬇️ 下发这些设置</button>
+    <div class="status" id="stCfg2"></div>
+    <label style="margin-top:16px">手工指令(高级)</label>
+    <input id="fRaw" type="text" placeholder="例如 on" autocapitalize="none">
+    <button id="btnRaw" class="ghost">发送</button>
+    <div class="status" id="stRaw"></div>
+  </details>
+</div>
+
+<div class="warnbox">
+  <b>⚠️ 这个网址里带着你的巴法云私钥</b>,等于账号密码。<br>
+  能打开这个页面的人,就能远程开你的电脑。<b>不要把链接转发给别人,不要贴到群里。</b><br>
+  建议:在自己的手机浏览器里打开后,「添加到主屏幕」,平时不用再打开这个链接。
+</div>
+
+<div class="foot">ESP32-S3 USB Wi-Fi 远程开机棒<br>
+  <a href="index.html">首次配网(蓝牙)→</a></div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* 私钥和主题从 URL 的 **hash** 里读(#xxx 不会发给服务器) */
+const P = new URLSearchParams(location.hash.replace(/^#/, ''));
+const UID   = P.get('uid')   || '794111f4eb3076e6ace81f02eabb0edd';
+const TOPIC = P.get('topic') || 'wolnddz99006';
+$('tTopic').textContent = TOPIC;
+$('fUid').value = UID;
+$('fTopicIn').value = TOPIC;
+
+/* 巴法云 HTTP API(实测允许跨域) */
+async function sendMessage(msg){
+  const u = 'https://apis.bemfa.com/va/sendMessage?uid=' + encodeURIComponent(UID)
+          + '&topic=' + encodeURIComponent(TOPIC) + '&type=1&msg=' + encodeURIComponent(msg);
+  const r = await fetch(u, {cache:'no-store'});
+  return await r.json();
+}
+async function topicInfo(){
+  const u = 'https://apis.bemfa.com/vb/api/v2/topicInfo?openID=' + encodeURIComponent(UID)
+          + '&type=1&topic=' + encodeURIComponent(TOPIC);
+  const r = await fetch(u, {cache:'no-store'});
+  return await r.json();
+}
+
+function st(el, msg, cls){ el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); }
+
+/* ---- 状态轮询 ---- */
+let lastMsg = null;
+async function refresh(){
+  try{
+    const j = await topicInfo();
+    const online = j.online === true || j.online === 'true' || j.pubOnline === true;
+    const val = j.msg || '';
+    const pill = $('tState');
+    if(!online){
+      pill.textContent = '离线'; pill.className = 'pill off';
+      st($('stState'), '设备当前离线 —— 板子没连上 Wi-Fi 或云端。\n看板子灯:黄=Wi-Fi 没连上,橙=云端没连上。', 'warn');
+    }else{
+      pill.textContent = '在线'; pill.className = 'pill on';
+      if(val === 'cfgok')      st($('stState'), '在线 · 刚刚收到配置指令并已保存(cfgok)','ok');
+      else if(val === 'cfgerr')st($('stState'), '在线 · 上一条配置指令被拒绝(cfgerr),看串口日志里的原因','err');
+      else if(val === 'cfgnoop')st($('stState'),'在线 · 上一条配置指令没有可应用的字段','warn');
+      else if(val === 'on')   st($('stState'), '在线 · 目标电脑在响应(ICMP 有应答)','ok');
+      else if(val === 'off')  st($('stState'), '在线 · 目标电脑没有响应(关机或 IP 不对)','warn');
+      else                    st($('stState'), '在线 · 当前值: ' + (val || '(空)'));
+    }
+    lastMsg = val;
+  }catch(e){
+    $('tState').textContent = '查询失败';
+    st($('stState'), '连不上巴法云接口:' + (e && e.message ? e.message : e), 'err');
+  }
+}
+
+/* ---- 开机 ---- */
+$('btnOn').onclick = async ()=>{
+  const b = $('btnOn'); b.disabled = true;
+  st($('stOn'), '正在下发开机指令…');
+  try{
+    const j = await sendMessage('on');
+    if(j && j.code === 0){
+      st($('stOn'), '✔ 指令已送达云端。\n板子正在广播魔术包,等 25~90 秒,观察板子灯变紫=正在发包。\n(如果板子报「目标本来就在线」,说明电脑本来就开着,这次不算唤醒。)', 'ok');
+      setTimeout(refresh, 4000);
+    }else{
+      st($('stOn'), '下发失败:' + JSON.stringify(j), 'err');
+    }
+  }catch(e){
+    st($('stOn'), '出错:' + (e && e.message ? e.message : e), 'err');
+  }
+  b.disabled = false;
+};
+
+/* ---- 配置目标电脑 ---- */
+$('btnCfg').onclick = async ()=>{
+  const b = $('btnCfg'); b.disabled = true;
+  const mac = $('fMac').value.trim();
+  const ip  = $('fIp').value.trim();
+  if(!mac || !ip){ st($('stCfg'), 'MAC 和 IP 都要填','err'); b.disabled=false; return; }
+  st($('stCfg'), '正在下发…');
+  try{
+    const j = await sendMessage('cfg mac=' + mac + ';ip=' + ip);
+    if(j && j.code === 0){
+      st($('stCfg'), '✔ 指令已下发。\n板子收到后会把配置写进 NVS(断电不丢),并在云端回执 cfgok。\n3 秒后状态栏会刷新。', 'ok');
+      setTimeout(refresh, 3000);
+    }else{
+      st($('stCfg'), '下发失败:' + JSON.stringify(j), 'err');
+    }
+  }catch(e){
+    st($('stCfg'), '出错:' + (e && e.message ? e.message : e), 'err');
+  }
+  b.disabled = false;
+};
+
+/* ---- 其它设置 ---- */
+$('btnCfg2').onclick = async ()=>{
+  const b = $('btnCfg2'); b.disabled = true;
+  const parts = [];
+  const ssid = $('fSsid').value.trim(); if(ssid) parts.push('ssid=' + ssid);
+  const pass = $('fPass').value;         if(pass) parts.push('pass=' + pass);
+  const uid  = $('fUid').value.trim();   if(uid)  parts.push('uid=' + uid);
+  const tp   = $('fTopicIn').value.trim();if(tp)   parts.push('topic=' + tp);
+  if(!parts.length){ st($('stCfg2'), '没有要下发的内容','warn'); b.disabled=false; return; }
+  st($('stCfg2'), '正在下发…');
+  try{
+    const j = await sendMessage('cfg ' + parts.join(';'));
+    if(j && j.code === 0){ st($('stCfg2'), '✔ 已下发,等 3 秒看状态栏回执','ok'); setTimeout(refresh,3000); }
+    else st($('stCfg2'), '下发失败:' + JSON.stringify(j), 'err');
+  }catch(e){ st($('stCfg2'), '出错:' + (e && e.message ? e.message : e), 'err'); }
+  b.disabled = false;
+};
+
+$('btnRaw').onclick = async ()=>{
+  const b = $('btnRaw'); b.disabled = true;
+  const raw = $('fRaw').value.trim();
+  if(!raw){ st($('stRaw'),'指令为空','warn'); b.disabled=false; return; }
+  st($('stRaw'), '发送中…');
+  try{
+    const j = await sendMessage(raw);
+    if(j && j.code === 0){ st($('stRaw'), '✔ 已发送: ' + raw, 'ok'); setTimeout(refresh,2000); }
+    else st($('stRaw'), '失败:' + JSON.stringify(j), 'err');
+  }catch(e){ st($('stRaw'), '出错:' + (e && e.message ? e.message : e), 'err'); }
+  b.disabled = false;
+};
+
+$('btnRefresh').onclick = refresh;
+refresh();
+setInterval(refresh, 6000);
+</script>
+</body>
+</html>
