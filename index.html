@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>远程开机棒 · 配网</title>
+<style>
+  :root{
+    --bg:#0b1220; --card:#141c2e; --line:#243049; --fg:#e8eefc; --dim:#8fa0c0;
+    --ok:#2ecc71; --warn:#f5a623; --err:#ff5a5a; --accent:#4c8dff; --accent2:#7b5cff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    padding:0 0 48px}
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px}
+  header{text-align:center;padding:18px 0 10px}
+  .logo{width:54px;height:54px;margin:0 auto 10px;border-radius:16px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:26px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:16px;margin:14px 0}
+  .card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+    font-size:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  label{display:block;font-size:13px;color:var(--dim);margin:12px 0 5px}
+  label:first-of-type{margin-top:0}
+  input,select{width:100%;padding:12px 13px;border-radius:11px;border:1px solid var(--line);
+    background:#0e1524;color:var(--fg);font-size:15px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  input::placeholder{color:#55658a}
+  .hint{font-size:12px;color:var(--dim);margin-top:5px}
+  .hint b{color:var(--warn);font-weight:600}
+  button{width:100%;padding:14px;border:0;border-radius:12px;font-size:16px;font-weight:600;
+    font-family:inherit;cursor:pointer;background:var(--accent);color:#fff;margin-top:6px}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500}
+  button.ok{background:var(--ok)}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .fold{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+  .fold summary{cursor:pointer;font-size:13px;color:var(--dim);list-style:none;user-select:none}
+  .fold summary::-webkit-details-marker{display:none}
+  .fold summary::before{content:"▸ ";color:var(--accent)}
+  .fold[open] summary::before{content:"▾ "}
+  .status{font-size:13px;padding:10px 12px;border-radius:10px;margin-top:12px;
+    background:#0e1524;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:20px}
+  .status.ok{background:rgba(46,204,113,.10);border-color:rgba(46,204,113,.35);color:#9ff0c4}
+  .status.err{background:rgba(255,90,90,.10);border-color:rgba(255,90,90,.35);color:#ffc2c2}
+  .status.warn{background:rgba(245,166,35,.10);border-color:rgba(245,166,35,.35);color:#ffe0a8}
+  .steps{list-style:none;padding:0;margin:10px 0 0}
+  .steps li{font-size:13px;color:var(--dim);padding:5px 0 5px 24px;position:relative}
+  .steps li::before{content:"○";position:absolute;left:0;color:var(--dim)}
+  .steps li.ok{color:#9ff0c4}.steps li.ok::before{content:"●";color:var(--ok)}
+  .steps li.err{color:#ffc2c2}.steps li.err::before{content:"✕";color:var(--err)}
+  .steps li.run{color:#cfe0ff}.steps li.run::before{content:"◐";color:var(--accent)}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;
+    background:#0e1524;border:1px solid var(--line);color:var(--dim);margin-left:6px}
+  .warnbox{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);
+    border-radius:12px;padding:12px 14px;font-size:13px;color:#ffe0a8;margin:12px 0}
+  .warnbox code{background:#0b1220;padding:1px 5px;border-radius:5px;font-size:12px;
+    display:block;margin-top:6px;white-space:pre-wrap;color:#cfe0ff}
+  .big{font-size:17px;padding:16px}
+  .foot{text-align:center;color:#55658a;font-size:12px;margin-top:22px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">⚡</div>
+  <h1>远程开机棒 · 配网</h1>
+  <div class="sub" id="devline">正在读取设备信息…</div>
+</header>
+
+<!-- 环境检查 -->
+<div id="envcard" class="card" style="display:none"></div>
+
+<!-- 步骤 1 -->
+<div class="card">
+  <h2><span class="num">1</span>连接你的开机棒</h2>
+  <p class="hint">点下面的按钮 → 在弹出的列表里选名字以 <b>WOL-</b> 开头的设备。</p>
+  <button id="btnConnect" class="big">🔗 连接蓝牙设备</button>
+  <div class="status" id="stConn">未连接</div>
+</div>
+
+<!-- 步骤 2 -->
+<div class="card">
+  <h2><span class="num">2</span>家里的 Wi-Fi</h2>
+  <label>Wi-Fi 名称(2.4G)</label>
+  <input id="fSsid" type="text" placeholder="例如 wang_home_plus" autocapitalize="none" autocorrect="off">
+  <label>Wi-Fi 密码</label>
+  <input id="fPass" type="password" placeholder="至少 8 位" autocapitalize="none" autocorrect="off">
+  <div class="hint">⚠ 只支持 <b>2.4GHz</b>。如果路由器把 2.4G/5G 分成两个名字,填 2.4G 那个。</div>
+</div>
+
+<!-- 步骤 3 -->
+<div class="card">
+  <h2><span class="num">3</span>要唤醒哪台电脑</h2>
+  <label>电脑有线网卡的 MAC</label>
+  <input id="fMac" type="text" placeholder="例如 A4:BB:6D:11:22:33" autocapitalize="characters" autocorrect="off">
+  <label>电脑的 IPv4</label>
+  <input id="fIp" type="text" placeholder="例如 192.168.31.102" autocapitalize="none" autocorrect="off">
+  <div class="hint">
+    在<b>路由器后台</b>的「已连接设备 / DHCP 客户端列表」里能看到,不用打开电脑。<br>
+    ⚠ 这台电脑的 IP 以后变了就要重配一次 —— 建议在路由器里给它做 <b>IP 与 MAC 绑定</b>。
+  </div>
+</div>
+
+<!-- 步骤 4 -->
+<div class="card">
+  <h2><span class="num">4</span>云端账号(已配好就跳过)</h2>
+  <details class="fold" id="cloudFold">
+    <summary>展开:填写巴法云私钥与主题</summary>
+    <label>巴法云私钥(32 位十六进制)</label>
+    <input id="fUid" type="text" placeholder="32 位十六进制" autocapitalize="none" autocorrect="off">
+    <label>主题名(必须以 006 结尾)</label>
+    <input id="fTopic" type="text" placeholder="例如 wolnddz99006" autocapitalize="none" autocorrect="off">
+    <div class="hint">不填就<b>保持设备里已有的值不变</b>。主题后三位是设备类型码,<b>006 = 开关</b>。</div>
+  </details>
+</div>
+
+<!-- 执行 -->
+<div class="card">
+  <h2>开始配网</h2>
+  <button id="btnGo" disabled>写入配置到开机棒</button>
+  <ul class="steps" id="steps">
+    <li id="s1">连接蓝牙</li>
+    <li id="s2">校验令牌</li>
+    <li id="s3">写入配置</li>
+    <li id="s4">读回校验</li>
+    <li id="s5">等待设备落盘</li>
+  </ul>
+  <div class="status" id="stMain">等待连接设备…</div>
+  <button id="btnWol" class="ghost" style="display:none" disabled>⚡ 试发一次唤醒包(仅测试链路)</button>
+</div>
+
+<div class="card" id="doneCard" style="display:none">
+  <h2>✅ 配网完成</h2>
+  <div class="status ok" id="stDone">配置已写入并落盘。</div>
+  <p class="hint" style="margin-top:12px">
+    接下来在手机上:<br>
+    ① 装<b>巴法云官方 App</b>并登录同一个账号<br>
+    ② 添加设备 → 主题名填你上面的主题 → 类型选「开关」<br>
+    ③ 电脑关机后,点 App 里的「开」即可远程开机<br>
+    ④ 想让小爱同学也能开,去巴法云后台开启「米家模式」
+  </p>
+</div>
+
+<div class="foot">ESP32-S3 USB Wi-Fi 远程开机棒</div>
+</div>
+
+<script>
+'use strict';
+/* =========================================================================
+ * 远程开机棒 · Web Bluetooth 配网页
+ * -------------------------------------------------------------------------
+ * 协议与固件 ble_prov.h 一一对应:
+ *   Service  7c4fad01-...
+ *     02 ssid   R/W      06 uid    R/W
+ *     03 pass   W        07 topic  R/W
+ *     04 mac    R/W      08 status R/Notify
+ *     05 ip     R/W      09 ctrl   W
+ *                 0a auth   W
+ * 写入顺序很重要:必须先写 auth(配网令牌),否则其它特征会被拒绝。
+ * ========================================================================= */
+const SVC='7c4fad01-0000-1000-8000-00805f9b34fb';
+const CH={
+  ssid:'7c4fad02-0000-1000-8000-00805f9b34fb',
+  pass:'7c4fad03-0000-1000-8000-00805f9b34fb',
+  mac: '7c4fad04-0000-1000-8000-00805f9b34fb',
+  ip:  '7c4fad05-0000-1000-8000-00805f9b34fb',
+  uid: '7c4fad06-0000-1000-8000-00805f9b34fb',
+  topic:'7c4fad07-0000-1000-8000-00805f9b34fb',
+  status:'7c4fad08-0000-1000-8000-00805f9b34fb',
+  ctrl:'7c4fad09-0000-1000-8000-00805f9b34fb',
+  auth:'7c4fad0a-0000-1000-8000-00805f9b34fb',
+};
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+let dev=null, srv=null, chars={}, token='';
+let notifLines=[];      // 设备推来的状态通知
+
+/* ---------------- 小工具 ---------------- */
+function st(el,msg,cls){ el.textContent=msg; el.className='status'+(cls?' '+cls:''); }
+function step(id,state){ const e=$(id); e.className=state; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function isMac(s){ return /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(s.trim()) || /^[0-9A-Fa-f]{12}$/.test(s.trim()); }
+function isIpv4(s){ return /^(\d{1,3}\.){3}\d{1,3}$/.test(s.trim()) && s.split('.').every(x=>+x>=0&&+x<=255); }
+function isHex32(s){ return /^[0-9a-fA-F]{32}$/.test(s.trim()); }
+function normMac(s){ const h=s.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  return h.length===12?h.match(/../g).join(':'):s; }
+
+/* ---------------- 读取 URL 里的设备信息 ---------------- */
+(function init(){
+  const q = new URLSearchParams(location.search);
+  // w=WOL1:<设备MAC>:<令牌>   —— 机身二维码里就是这个串
+  const w = q.get('w') || q.get('code') || '';
+  if(w){
+    if(w.startsWith('WOL1:')){
+      const p = w.split(':');
+      token = p[2] || '';
+      $('devline').textContent = '设备 ' + (p[1]||'?') + ' · 令牌已从二维码读取';
+    } else { token = w; $('devline').textContent='令牌已从二维码读取'; }
+  } else {
+    $('devline').textContent='未从二维码读到令牌,请手动填写';
+  }
+  // 允许 ?ssid= &mac= &ip= 预填
+  ['ssid','mac','ip','uid','topic'].forEach(k=>{
+    const v=q.get(k); if(v) $('f'+(k[0].toUpperCase()+k.slice(1))).value = v;
+  });
+  if(q.get('ssid')||q.get('mac')) $('fPass').focus();
+})();
+
+/* ---------------- 环境检查 ---------------- */
+(function envCheck(){
+  const c=$('envcard'); const msgs=[];
+  const secure = window.isSecureContext;
+  if(!('bluetooth' in navigator)){
+    c.style.display='block';
+    c.innerHTML = '<h2>⚠️ 这个浏览器不支持 Web Bluetooth</h2>'
+      + '<div class="warnbox">请用 <b>Android 版 Chrome / Edge</b> 打开本页。<br>'
+      + '<b>iPhone 的 Safari 不支持 Web Bluetooth</b>(Apple 至今未实现),iOS 用户请看下面的替代方案。'
+      + '<code>在任意一台 Windows 电脑上执行:\n'
+      + '  cd tools\n'
+      + '  python -m pip install bleak\n'
+      + '  python ble_provision.py provision --token &lt;令牌&gt; --ssid &lt;Wi-Fi&gt; --pass &lt;密码&gt; \\\n'
+      + '        --mac &lt;电脑MAC&gt; --ip &lt;电脑IP&gt;</code></div>';
+    $('btnConnect').disabled=true; $('btnGo').disabled=true;
+    return;
+  }
+  if(!secure){
+    c.style.display='block';
+    c.innerHTML = '<h2>⚠️ 需要 HTTPS</h2><div class="warnbox">'
+      + '浏览器只允许在 <b>https://</b> 或 localhost 下使用蓝牙。请用扫码得到的完整 https 链接打开本页。</div>';
+    $('btnConnect').disabled=true; $('btnGo').disabled=true;
+    return;
+  }
+})();
+
+/* ---------------- 连接 ---------------- */
+$('btnConnect').onclick = async ()=>{
+  const b=$('btnConnect'); b.disabled=true;
+  st($('stConn'),'正在弹出设备列表…');
+  try{
+    dev = await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'WOL-'}],
+      optionalServices:[SVC]
+    });
+    st($('stConn'),'已选择 '+dev.name+',正在连接…');
+    dev.addEventListener('gattserverdisconnected', onDisconnect);
+    srv = await dev.gatt.connect();
+    const service = await srv.getPrimaryService(SVC);
+    for(const k in CH){
+      chars[k] = await service.getCharacteristic(CH[k]);
+    }
+    st($('stConn'),'✔ 已连接:'+dev.name+'   (点「写入配置到开机棒」开始)', 'ok');
+    $('btnGo').disabled=false;
+    step('s1','ok');
+    $('steps').parentElement && null;
+  }catch(e){
+    st($('stConn'),'连接失败:'+(e&&e.message?e.message:e),'err');
+    b.disabled=false;
+  }
+};
+function onDisconnect(){
+  srv=null; chars={}; $('btnGo').disabled=true; $('btnWol').disabled=true;
+  st($('stConn'),'蓝牙已断开,请重新连接','warn');
+  step('s1','err');
+}
+
+/* ---------------- 读 / 写 ---------------- */
+async function writeC(key, text){
+  await chars[key].writeValue(enc.encode(text));
+}
+async function readC(key){
+  const v = await chars[key].readValue();
+  return dec.decode(v).replace(/\0+$/,'');
+}
+
+/* ---------------- 主流程 ---------------- */
+$('btnGo').onclick = async ()=>{
+  const b=$('btnGo'); b.disabled=true;
+  ['s2','s3','s4','s5'].forEach(i=>step(i,''));
+  st($('stMain'),'');
+
+  // --- 表单校验 ---
+  const ssid=$('fSsid').value.trim();
+  const pass=$('fPass').value;
+  const mac =normMac($('fMac').value.trim());
+  const ip  =$('fIp').value.trim();
+  const uid =$('fUid').value.trim();
+  const topic=$('fTopic').value.trim();
+
+  if(!token){ st($('stMain'),'缺少配网令牌 —— 请重新扫机身二维码,或把令牌填入后重试','err'); b.disabled=false; return; }
+  if(!ssid){ st($('stMain'),'请填写 Wi-Fi 名称','err'); b.disabled=false; return; }
+  if(pass && pass.length<8){ st($('stMain'),'Wi-Fi 密码至少 8 位(WPA2 要求)','err'); b.disabled=false; return; }
+  if(!isMac(mac)){ st($('stMain'),'电脑 MAC 格式不对,应为 A4:BB:6D:11:22:33 这样','err'); b.disabled=false; return; }
+  if(!isIpv4(ip)){ st($('stMain'),'电脑 IPv4 格式不对,应为 192.168.31.102 这样','err'); b.disabled=false; return; }
+  if(uid && !isHex32(uid)){ st($('stMain'),'巴法云私钥必须是 32 位十六进制','err'); b.disabled=false; return; }
+  if(topic && !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(topic)){ st($('stMain'),'主题名只能字母/数字/下划线,首位不能是数字,不超过 32 字符','err'); b.disabled=false; return; }
+
+  try{
+    // --- 2 认证 ---
+    step('s2','run'); st($('stMain'),'正在校验配网令牌…');
+    await writeC('auth', token);
+    await sleep(600);
+    // 认证成功后固件会把敏感特征回填,读一下 auth 事件确认
+    const who = await readC('mac').catch(()=> '');
+    step('s2','ok');
+
+    // --- 3 写入 ---
+    step('s3','run'); st($('stMain'),'正在写入配置…');
+    await writeC('ssid', ssid);
+    if(pass) await writeC('pass', pass);
+    await writeC('mac', mac);
+    await writeC('ip', ip);
+    if(uid)   await writeC('uid', uid);
+    if(topic) await writeC('topic', topic);
+    step('s3','ok');
+
+    // --- 4 读回校验 ---
+    step('s4','run'); st($('stMain'),'正在读回校验…');
+    const back = {};
+    for(const k of ['ssid','mac','ip','uid','topic']){
+      try{ back[k] = await readC(k); }catch(e){ back[k]=''; }
+    }
+    const bad=[];
+    if(back.ssid!==ssid) bad.push('ssid 读回='+(back.ssid||'(空)'));
+    if(back.mac!==mac)   bad.push('mac 读回='+(back.mac||'(空)'));
+    if(back.ip!==ip)     bad.push('ip 读回='+(back.ip||'(空)'));
+    if(uid   && back.uid!==uid)   bad.push('uid 读回不一致');
+    if(topic && back.topic!==topic) bad.push('topic 读回不一致');
+    if(bad.length){
+      step('s4','err');
+      st($('stMain'),'读回校验不通过:\n - '+bad.join('\n - '),'err');
+      b.disabled=false; return;
+    }
+    step('s4','ok');
+
+    // --- 5 等待设备落盘 ---
+    step('s5','run');
+    st($('stMain'),'配置已写入,等待设备保存到 NVS…');
+    const saved = await waitSaved(10000);
+    if(saved){ step('s5','ok'); }
+    else{
+      step('s5','err');
+      st($('stMain'),'没有收到设备的落盘确认。\n配置可能还在内存里 —— 请靠近设备,等几秒再试,或检查蓝牙是否中途断开了。','warn');
+    }
+    st($('stMain'),'配置已写入并读回校验通过。', 'ok');
+    $('doneCard').style.display='block';
+    $('btnWol').style.display='block'; $('btnWol').disabled=false;
+    $('stDone').innerHTML = '✔ 目标电脑:'+back.mac+'  ('+back.ip+')\n'
+      + '✔ Wi-Fi:'+back.ssid+'\n'
+      + (back.topic? '✔ 云端主题:'+back.topic+'\n':'')
+      + (saved? '✔ 已落盘到设备(断电不丢)':'⚠ 未收到落盘确认,请复核');
+  }catch(e){
+    st($('stMain'),'出错了:'+(e&&e.message?e.message:e),'err');
+    b.disabled=false;
+  }
+};
+
+/* 订阅状态通知,等设备的 {"e":"cfg","v":"saved"} */
+async function waitSaved(ms){
+  try{
+    if(chars.status){
+      chars.status.addEventListener('characteristicvaluechanged', ev=>{
+        const t = dec.decode(ev.target.value).replace(/\0+$/,'');
+        notifLines.push(t);
+        if(t.indexOf('"saved"')>=0) notifLines.push('__SAVED__');
+      });
+      await chars.status.startNotifications();
+    }
+  }catch(e){ /* 有些浏览器不支持通知,退化成只等时间 */ }
+
+  const t0=Date.now();
+  while(Date.now()-t0 < ms){
+    if(notifLines.indexOf('__SAVED__')>=0) return true;
+    await sleep(300);
+  }
+  return false;
+}
+
+/* ---------------- 试发一次唤醒包 ---------------- */
+$('btnWol').onclick = async ()=>{
+  const b=$('btnWol'); b.disabled=true;
+  st($('stMain'),'已下发 ctrl=wol,开机棒正在向局域网广播魔术包…');
+  try{
+    await writeC('ctrl','wol');
+    await sleep(1500);
+    st($('stMain'),'✔ 已下发。看板子上的灯:紫色 = 正在发包。\n(这只能证明「包发出去了」,'
+      + '证明「电脑真被唤醒」要在电脑那边看 powercfg /lastwake)','ok');
+  }catch(e){
+    st($('stMain'),'下发失败:'+(e&&e.message?e.message:e),'err');
+  }
+  b.disabled=false;
+};
+</script>
+</body>
+</html>
