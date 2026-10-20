@@ -59,6 +59,35 @@ python ble_provision.py provision --token <令牌> --ssid <Wi-Fi> --pass <密码
   打不开蓝牙。
 - 落地时的判定链:写完 → 逐项读回比对 → 等设备推 `{"e":"cfg","v":"saved"}` → 才报成功。
 
+---
+
+## `panel.html` —— 手机控制面板(日常用这个)
+
+```
+https://ywc918825.github.io/wolstick-setup/panel.html#uid=<你的私钥>&topic=<你的主题>
+```
+
+- **看状态**:在线/离线、目标电脑在不在响应,每 6 秒自动刷新
+- **⚡ 开机**:点一下就发开机指令(走巴法云云端,和巴法云 App 等价)
+- **配目标电脑**:填 MAC + IPv4 → 点「下发配置」→ 板子改完在云端回执 `cfgok`
+- **其它设置**:改 Wi-Fi / 私钥 / 主题 / 发任意手工指令
+
+私钥和主题从 URL 的 **`#` 片段**里读 —— `#` 之后的内容**不会发给服务器**,
+GitHub Pages 看不到你的私钥。
+
+> ⚠️ 但这个链接本身等于账号密码:能打开它的人就能远程开你的电脑。
+> 建议在手机浏览器里「添加到主屏幕」,别把链接转发给别人。
+
+技术上:网页直接调巴法云 HTTP API(实测该 API 允许跨域 `Access-Control-Allow-Origin: *`),
+**不需要任何后端**。
+
+### 机身二维码
+
+| 图 | 指向 | 用途 |
+|---|---|---|
+| `docs/qr_panel.png` | `panel.html#uid=...&topic=...` | 日常控制(建议贴这个) |
+| `docs/qr_provision.png` | `index.html?w=WOL1:...` | 首次配网(蓝牙) |
+
 ## 改了固件/协议怎么办
 
 - 改**配网网址**:改 `sketches/phase4_cloud/secrets.h` 里的 `WOL_SETUP_URL`,
