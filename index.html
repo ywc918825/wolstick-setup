@@ -113,6 +113,19 @@
   </div>
 </div>
 
+<!-- 备用方案:电脑配网 -->
+<div class="card" id="pcCard" style="display:none">
+  <h2><span class="num">💻</span>浏览器不支持蓝牙?用电脑配也一样</h2>
+  <p class="hint">在下面把 4 项填好 → 点「复制命令」→ 通过微信/邮件发到电脑 → 粘贴执行。效果和手机配网完全一样。</p>
+  <label>已填内容会自动拼进命令</label>
+  <pre id="cmdPreview" style="background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;color:#cfe0ff;white-space:pre-wrap;word-break:break-all;overflow-x:auto"></pre>
+  <div class="row">
+    <button id="btnCopy" class="ok">📋 复制命令</button>
+    <button id="btnCopyWin" class="ghost">📋 复制(不含密码)</button>
+  </div>
+  <div class="status" id="stCopy"></div>
+</div>
+
 <!-- 步骤 4 -->
 <div class="card">
   <h2><span class="num">4</span>云端账号(已配好就跳过)</h2>
@@ -266,10 +279,54 @@ $('btnConnect').onclick = async ()=>{
     step('s1','ok');
     $('steps').parentElement && null;
   }catch(e){
-    st($('stConn'),'连接失败:'+(e&&e.message?e.message:e),'err');
+    const name = (e && e.name) || '';
+    const msg  = (e && e.message) ? e.message : String(e);
+    if(name==='NotSupportedError' || /not supported/i.test(msg)){
+      showBtUnsupported();
+    } else {
+      st($('stConn'),'连接失败:'+msg,'err');
+    }
     b.disabled=false;
   }
 };
+
+/* 浏览器不支持 Web Bluetooth —— 给中文指引 + 打开电脑配网兜底 */
+function showBtUnsupported(){
+  st($('stConn'),'这个浏览器不支持蓝牙配网(不是网页的问题,是浏览器的问题)','err');
+  const c = $('pcCard');
+  c.style.display='block';
+  c.scrollIntoView({behavior:'smooth', block:'start'});
+  const h = document.createElement('div');
+  h.className='warnbox';
+  h.innerHTML =
+    '<b>换一个浏览器就能用(网页本身是好的)</b><br>'
+    + '✅ 手机 <b>Chrome</b>(应用商店装官方版) / <b>Edge</b> / <b>三星浏览器</b><br>'
+    + '✅ 电脑 <b>Chrome</b> / <b>Edge</b>(Windows 自带蓝牙即可)<br>'
+    + '❌ 微信内置浏览器 / 小米自带浏览器 / QQ / UC / 夸克 / <b>iPhone 的 Safari</b><br>'
+    + '⚠️ Android 7.0 以下、桌面 Chrome 旧版本也不支持<br><br>'
+    + '<b>懒得换浏览器?</b> 用下面「电脑配网」—— 在手机上填好参数,复制命令发到电脑执行,效果完全一样。';
+  $('stConn').parentElement.insertBefore(h, $('stConn').nextSibling);
+  updateCmd();
+}
+
+/* 生成电脑端配网命令 */
+function buildCmd(withPass){
+  const ssid = $('fSsid').value.trim();
+  const pass = $('fPass').value;
+  const mac  = normMac($('fMac').value.trim());
+  const ip   = $('fIp').value.trim();
+  const parts = ['python ble_provision.py provision', '--token ' + token];
+  parts.push('--ssid "' + (ssid||'<Wi-Fi名称>') + '"');
+  parts.push('--pass "' + (withPass ? (pass||'<Wi-Fi密码>') : '<Wi-Fi密码>') + '"');
+  parts.push('--mac ' + (mac||'<电脑MAC>'));
+  parts.push('--ip '  + (ip ||'<电脑IP>'));
+  return parts.join(' \\\n  ');
+}
+function updateCmd(){
+  const p = $('cmdPreview');
+  if(!p) return;
+  p.textContent = buildCmd(true);
+}
 function onDisconnect(){
   srv=null; chars={}; $('btnGo').disabled=true; $('btnWol').disabled=true;
   st($('stConn'),'蓝牙已断开,请重新连接','warn');
@@ -387,6 +444,26 @@ async function waitSaved(ms){
   }
   return false;
 }
+
+/* ---------------- 复制命令(电脑配网兜底) ---------------- */
+async function copyText(txt, note){
+  try{
+    await navigator.clipboard.writeText(txt);
+    st($('stCopy'), note + ' ✔ 已复制到剪贴板', 'ok');
+  }catch(e){
+    // 剪贴板 API 在部分浏览器要用户手势/权限,失败就手动选中让用户复制
+    const p = $('cmdPreview');
+    const r = document.createRange(); r.selectNodeContents(p);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    st($('stCopy'), note + ' —— 浏览器不给自动复制权限,已帮你全选,请按 Ctrl+C', 'warn');
+  }
+}
+$('btnCopy').onclick = ()=> copyText(buildCmd(true), '完整命令(含密码)');
+$('btnCopyWin').onclick = ()=> copyText(buildCmd(false), '命令(密码留空,由你自己填)');
+['fSsid','fPass','fMac','fIp'].forEach(id=>{
+  const e = $(id);
+  if(e) e.addEventListener('input', updateCmd);
+});
 
 /* ---------------- 试发一次唤醒包 ---------------- */
 $('btnWol').onclick = async ()=>{
